@@ -32,7 +32,7 @@ func NewController(cfg *controller.Config, rs receiver.Settings,
 	intervals := times.New(cfg.ReporterInterval,
 		cfg.MonitorInterval, cfg.ProbabilisticInterval)
 
-	rep, err := reporter.NewCollector(&reporter.Config{
+	config := &reporter.Config{
 		Name:                   ctrlName,
 		Version:                vc.Version(),
 		MaxRPCMsgSize:          32 << 20, // 32 MiB
@@ -42,7 +42,15 @@ func NewController(cfg *controller.Config, rs receiver.Settings,
 		GRPCConnectionTimeout:  intervals.GRPCConnectionTimeout(),
 		ReportInterval:         intervals.ReportInterval(),
 		SamplesPerSecond:       cfg.SamplesPerSecond,
-	}, nextConsumer)
+	}
+
+	var rep reporter.Reporter
+	var err error
+	if cfg.ReporterFactory == nil {
+		rep, err = reporter.NewCollector(config, nextConsumer)
+	} else {
+		rep, err = cfg.ReporterFactory(config, nextConsumer)
+	}
 	if err != nil {
 		return nil, err
 	}

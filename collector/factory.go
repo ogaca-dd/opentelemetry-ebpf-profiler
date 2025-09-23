@@ -32,20 +32,51 @@ func NewFactory() receiver.Factory {
 }
 
 func createProfilesReceiver(
-	_ context.Context,
+	ctx context.Context,
 	rs receiver.Settings,
 	baseCfg component.Config,
 	nextConsumer xconsumer.Profiles) (xreceiver.Profiles, error) {
-	cfg, ok := baseCfg.(*controller.Config)
+	return BuildProfilesReceiver(ctx, rs, baseCfg, nextConsumer)
+}
+
+func BuildProfilesReceiver(
+	ctx context.Context,
+	rs receiver.Settings,
+	baseCfg component.Config,
+	nextConsumer xconsumer.Profiles,
+	options ...option) (xreceiver.Profiles, error) {
+
+	cfg, ok := baseCfg.(*Config)
 	if !ok {
 		return nil, errInvalidConfig
 	}
 
-	return internal.NewController(cfg, rs, nextConsumer)
+	controllerOption := &controllerOption{}
+	for _, option := range options {
+		option.Apply(controllerOption)
+	}
+
+	controlerCfg := &controller.Config{
+		ReporterInterval:       cfg.ReporterInterval,
+		MonitorInterval:        cfg.MonitorInterval,
+		SamplesPerSecond:       cfg.SamplesPerSecond,
+		ProbabilisticInterval:  cfg.ProbabilisticInterval,
+		ProbabilisticThreshold: cfg.ProbabilisticThreshold,
+		Tracers:                cfg.Tracers,
+		ClockSyncInterval:      cfg.ClockSyncInterval,
+		SendErrorFrames:        cfg.SendErrorFrames,
+		VerboseMode:            cfg.VerboseMode,
+		OffCPUThreshold:        cfg.OffCPUThreshold,
+		IncludeEnvVars:         cfg.IncludeEnvVars,
+		ReporterFactory:        controllerOption.reporterFactory,
+		ExecutableReporter:     controllerOption.executableReporter,
+	}
+
+	return internal.NewController(controlerCfg, rs, nextConsumer)
 }
 
 func defaultConfig() component.Config {
-	return &controller.Config{
+	return &Config{
 		ReporterInterval:       5 * time.Second,
 		MonitorInterval:        5 * time.Second,
 		SamplesPerSecond:       20,
