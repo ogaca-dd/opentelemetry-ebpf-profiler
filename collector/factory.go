@@ -32,13 +32,27 @@ func NewFactory() receiver.Factory {
 }
 
 func createProfilesReceiver(
-	_ context.Context,
+	ctx context.Context,
 	rs receiver.Settings,
 	baseCfg component.Config,
 	nextConsumer xconsumer.Profiles) (xreceiver.Profiles, error) {
+	return BuildProfilesReceiver(ctx, rs, baseCfg, nextConsumer)
+}
+
+func BuildProfilesReceiver(
+	ctx context.Context,
+	rs receiver.Settings,
+	baseCfg component.Config,
+	nextConsumer xconsumer.Profiles,
+	options ...option) (xreceiver.Profiles, error) {
 	cfg, ok := baseCfg.(*Config)
 	if !ok {
 		return nil, errInvalidConfig
+	}
+
+	controllerOption := &controllerOption{}
+	for _, option := range options {
+		option.Apply(controllerOption)
 	}
 
 	controlerCfg := &controller.Config{
@@ -53,6 +67,7 @@ func createProfilesReceiver(
 		VerboseMode:            cfg.VerboseMode,
 		OffCPUThreshold:        cfg.OffCPUThreshold,
 		IncludeEnvVars:         cfg.IncludeEnvVars,
+		ExecutableReporter:     controllerOption.executableReporter,
 	}
 
 	return internal.NewController(controlerCfg, rs, nextConsumer)
